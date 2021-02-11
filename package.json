@@ -8,5 +8,9 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "got": "^11.8.1",
+    "request": "^2.88.2"
+  }
 }
