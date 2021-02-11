@@ -6,6 +6,8 @@ const Task = require('../task');
 const id = x => x;
 
 describe(`task monad`, () => {
+  const body = x => x.body;
+  const url = 'https://jsonplaceholder.typicode.com/users/1/todos'
   it(`should not eval until fork is called`, () => {
     const t1 = Task((rej, res) => res(1))
       .map(one => one + 2)
@@ -15,6 +17,13 @@ describe(`task monad`, () => {
     t1.fork(console.error, x => {
       expect(x).toBe(7)
     })
+  });
+  describe(`used with a fn expecting an async callback`, () => {
+    it(`should handle the payload in the fork functions's resolve fn (the second arg to .fork)`, () => {
+      Task((reject, resolve) => request(url, (err, data) => err ? reject(err) : resolve(data)))
+        .map(body)
+        .fork(console.error, x => expect(x).toBeTruthy())
+    });
   });
   describe(`used with a promise fn`, () => {
     describe(`that calls a bad url`, () => {
@@ -28,22 +37,3 @@ describe(`task monad`, () => {
     });
   });
 });
-//=====================================================================
-// const httpGetTask = url => Task((reject, resolve) =>
-//   request(url, (err, data) => { err? reject(err) : resolve(data)}))
-//
-// const url = 'https://jsonplaceholder.typicode.com/users/1/todos';
-//
-//
-// const body = x => x.body;
-//
-
-//
-//
-// httpGetTask(url)
-//   .map(body)
-//   .fork(errorFork, id)
-//
-// const simpleTask = httpGetTask('https://jsonplaceholder.typicode.com/users/1/todos')
-//
-// simpleTask.fork(e => console.error(e), x => console.log(x.body))//?
