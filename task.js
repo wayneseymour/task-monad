@@ -1,47 +1,20 @@
-const request = require('request');
-const got = require('got');
-
 const pipe = (...fns) => fns.reduce((f, g) => (...args) => g(f(...args)));
-
-const id = x => x;
 
 const Task = fork => ({
   fork,
-  map(f) {
-    return Task((err, ok) =>
-      fork(err, pipe(f, ok))) //<= theres our compose!
-  },
-  chain(f) {
-    return Task((err, ok) =>
-      fork(err, x => f(x).fork(err, ok)))
-  },
-  fold() {
-    Task.chain(id)
-  }
+  map: f => Task((rej, res) => fork(rej, pipe(f, res))),
+  chain: f =>
+    Task((rej, res) => fork(rej, x => f(x).fork(rej, res))),
+  fold: (f, g) =>
+    Task((rej, res) => fork(x => f(x).fork(rej, res), x => g(x).fork(rej, res)))
 })
 
-Task.of = x => ((_, ok) => ok(x)); // pass over the err param
+
+Task.of = x =>
+  ((rej, res) => res(x));
 Task.fromPromised = fn => (...args) =>
-  Task((rej, res) =>
-    fn(...args)
-      .then(res)
-      .catch(rej),
-  );
+  Task((rej, res) => fn(...args).then(res).catch(rej));
+Task.rejected = x =>
+  Task((rej, res) => rej(x))
 
-const httpGetTask = url => Task((reject, resolve) =>
-  request(url, (err, data) => { err? reject(err) : resolve(data)}))
-
-const url = 'https://jsonplaceholder.typicode.com/users/1/todos';
-
-Task.fromPromised(x => got.get(x))('stop.com')
-  .map(x => x.body)
-  .fork(x => console.error(`\n### x: \n\t${x}`), id)//?
-
-
-httpGetTask(url) // Mapping before forking (transforming the value before we even have a value :)
-  .map(x => x.body)
-  .fork(e => console.error(e), id)
-
-const simpleTask = httpGetTask('https://jsonplaceholder.typicode.com/users/1/todos')
-
-simpleTask.fork(e => console.error(e), x => console.log(x.body))//?
+module.exports = Task;
